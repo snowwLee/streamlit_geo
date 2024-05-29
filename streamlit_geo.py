@@ -260,7 +260,7 @@ elif tabs == "접수번호 조회":
     application_map = folium.Map(location=[-3.0511135,132.2798922], zoom_start=3,tiles='cartodbpositron')
     
     # 나중에는 text_input으로 바꿔야함
-    application_num = st.text_input('접수번호를 입력하세요')
+    application_num = st.number_input('접수번호를 입력하세요')
 
     # input값에 대한 조건 조회
     if application_num:
