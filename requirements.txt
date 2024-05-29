@@ -5,3 +5,4 @@ streamlit-folium
 plotly
 streamlit-option-menu
 openpyxl
+xlsxwriter
