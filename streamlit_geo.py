@@ -81,10 +81,6 @@ if tabs == "지도":
     st_f = st_folium(m, width=2000)
 
 
-    if st.button("가장 빈도가 높은 좌표로 이동"):
-        st.session_state.center = most_common_coordinates[0][0]
-        st.experimental_rerun()
-
     st.markdown('---')
     st.subheader('동원국가 비율')
     tabs1_col1_1, tabs1_col1_2 = st.columns([4,2])
