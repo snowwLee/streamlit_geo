@@ -328,7 +328,7 @@ elif tabs == "통합":
 
     with tabs4_col1_1:
         # 선택한 데이터프레임을 막대그래프로 표시
-        total_filtered2_count_fig = px.bar(total_filtered2_count, x='선택 동원지역', y='선택 동원지역_count', title='선택 동원 국가 그래프')
+        total_filtered2_count_fig = px.bar(total_filtered2_count, x='선택 동원지역', y='선택 동원지역_count', title='선택 동원 지역 그래프')
         total_filtered2_count_fig.update_traces(marker_color='#7fffd4')
         st.plotly_chart(total_filtered2_count_fig, use_container_width=True)
         
