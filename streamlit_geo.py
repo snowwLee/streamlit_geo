@@ -12,6 +12,9 @@ import io
 from io import BytesIO
 import tempfile
 from collections import Counter
+from streamlit_folium import folium_static
+import matplotlib.colors as mcolors
+import branca.colormap as cm
 #--------------------------------------------------------------------------------
 
 # streamlit화면을 전체로 사용
@@ -34,51 +37,73 @@ with st.sidebar:
 #---------------------------------------------------------------------------------
 
 if tabs == "지도":
-    info1, info2, info3 = st.columns(3)
-    with info1 :
-        st.info('1순위 지역')
-    with info2:
-        st.error('2순위 지역')
-    with info3:    
-        st.success('3순위 지역')
-    # Folium을 사용하여 지도 생성
-    m = folium.Map(location=[34.61292748985476, 22.350872041599875], zoom_start=2,tiles='cartodbpositron')
+
+    tabs_map_1, tabs_map_2, tabs_map_3 = st.columns([1,8,1])
+#--------------지도 페이지 지도 시작점 -----------------------------------------------------------------------
 
 
-    # 같은 위치의 좌표들을 하나로 묶어서 사용하기 위해 사용
-    marker_cluster = MarkerCluster().add_to(m)
+    with tabs_map_2 :
+        # '동원지역명 수정' 갯수를 계산하여 딕셔너리에 저장
+        location_counts = df['동원지역명 수정'].value_counts().to_dict()
 
-    # 좌표 빈도 계산
-    coordinates = [(row['위도'], row['경도']) for index, row in df.iterrows() if pd.notnull(row['위도']) and pd.notnull(row['경도'])]
-    coordinate_counts = Counter(coordinates)
+        # 색상의 범위를 '동원지역명 수정'의 갯수에 따라 설정
+        min_count = min(location_counts.values())
+        max_count = max(location_counts.values())
+        colormap = cm.linear.viridis.scale(min_count, max_count)
 
-    # 가장 많은 좌표 상위 3개 찾기
-    most_common_coordinates = coordinate_counts.most_common(3)
+        # 지도 객체 생성
+        m = folium.Map(location=[34.61292748985476, 22.350872041599875], zoom_start=2, tiles='cartodbpositron')
+
+        # MarkerCluster 객체 생성
+        marker_cluster = MarkerCluster().add_to(m)
+
+        # 데이터프레임을 순회하며 각 '동원지역명 수정' 원을 생성
+        for name, group in df.groupby('동원지역명 수정'):
+            latitude = group['위도'].iloc[0] 
+            longitude = group['경도'].iloc[0]
+            num_locations = len(group)  # 그룹의 행 수 가져오기
+            num_confirmed = sum(group['봉환여부'] == '봉환')  # 각 group의 봉환 갯수 가져오기
+            color = colormap(location_counts[name])  # 지역명의 갯수에 따라 색상을 결정합니다.
+            
+            #위도 경도가 없을 경우에는 넘어가기
+            if pd.isnull(latitude) or pd.isnull(longitude):
+                continue
+            
+            # Tooltip 텍스트 생성
+            # ex) 한국 : 10 / 봉환자 6
+            tooltip_text = f"{name} <br> 총 : {num_locations} <br> 봉환자 : {num_confirmed} ",
+
+            # HTML 및 CSS를 사용하여 숫자와 색상을 모두 포함하는 DivIcon 생성
+            icon_html = f'''
+                <div style="
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    width: 25px;
+                    height: 25px;
+                    border-radius: 50%;
+                    background-color: {color};
+                    font-size: 10pt;
+                    color: white;">
+                    {int(num_locations)}
+                </div>
+            '''
+
+            # Marker 생성하여 Cluster에 추가
+            folium.Marker(
+                location=[latitude, longitude],
+                icon=folium.DivIcon(html=icon_html),
+                tooltip=tooltip_text
+            ).add_to(marker_cluster)
+
+        # 컬러맵을 지도에 추가
+        colormap.add_to(m)
 
 
-    # 클러스터 그리기
-    for index, row in df.iterrows():
-        local_name = row['동원지역명 수정']
-        lat = row['위도']
-        lng = row['경도']
-        if isinstance(lat, str) or isinstance(lng, str):
-            continue
-        if pd.notnull(lat) and pd.notnull(lng):
-            folium.Marker([lat, lng], tooltip=local_name).add_to(marker_cluster)
+        # streamlit-folium을 사용하여 지도 표시
+        folium_static(m, height=800, width = 1400)
 
-    # 상위 3개 좌표에 동그라미 그리기
-    colors = ['#0100FF', '#FF007F', '#41FF3A']
-    for i, (coordinate, count) in enumerate(most_common_coordinates):
-        folium.Circle(
-            location=coordinate,
-            radius=250000,
-            color=colors[i],
-            fill=True,
-            fill_color=colors[i]
-        ).add_to(m)
-
-    # 지도 출력하기
-    st_f = st_folium(m, width=2000)
+#--------------지도 페이지 지도 끝점 -----------------------------------------------------------------------
 
 
     st.markdown('---')
@@ -140,8 +165,7 @@ elif tabs == "동원 지역":
     selected_options = st.multiselect(' ' ,options)
 
     # 선택한 값에 해당하는 행만 필터링
-    filtered_df = local_count[local_count['동원지역명 수정'].isin(selected_options)].sort_values(by='동원지역명 수정_count', ascending=False)
-
+    filtered_df = local_count[local_count['동원지역명 수정'].isin(selected_options)]
 
     # 두 번째 탭 두번째 컬럼 생성
     tabs2_col2_1, tabs2_col2_2= st.columns([4,1])
@@ -208,7 +232,8 @@ elif tabs == "동원 국가":
     nation_selected_options = st.multiselect(' ' ,nation_options)
 
     # 선택한 값에 해당하는 행만 필터링
-    nation_filtered_df = nation_count[nation_count['동원국가 - 수정'].isin(nation_selected_options)].sort_values(by='동원국가 - 수정_count', ascending=False)
+    nation_filtered_df = nation_count[nation_count['동원국가 - 수정'].isin(nation_selected_options)]
+
 
 
     # 세 번째 탭 두번째 컬럼 생성
@@ -256,7 +281,7 @@ elif tabs == "접수번호 조회":
     application_map = folium.Map(location=[-3.0511135,132.2798922], zoom_start=3,tiles='cartodbpositron')
     
     # 나중에는 text_input으로 바꿔야함
-    application_num = st.number_input('접수번호를 입력하세요')
+    application_num = st.text_input('접수번호를 입력하세요')
 
     # input값에 대한 조건 조회
     if application_num:
@@ -291,14 +316,14 @@ elif tabs == "통합":
     total_selected_options1 = st.multiselect('동원국가 선택' ,total_option1)
 
     # 선택한 값에 해당하는 행만 필터링
-    total_filtered1 = total_data[total_data['동원국가 - 수정'].isin(total_selected_options1)].sort_values(by='동원국가 - 수정', ascending=False)
+    total_filtered1 = total_data[total_data['동원국가 - 수정'].isin(total_selected_options1)]
 
     #지역 필터링--------------------------------------------------------------------------------
     total_option2 = total_filtered1['동원지역명 수정'].unique().tolist()
 
     total_selected_options2 = st.multiselect('동원지역 선택' ,total_option2)
     
-    total_filtered2 = total_filtered1[total_filtered1['동원지역명 수정'].isin(total_selected_options2)].sort_values(by='동원지역명 수정', ascending=False)
+    total_filtered2 = total_filtered1[total_filtered1['동원지역명 수정'].isin(total_selected_options2)]
     
     #비율 데이터 프레임 만들기--------------------------------------------------------------------------------
     total_filtered2_count = total_filtered2['동원지역명 수정'].value_counts()
@@ -333,7 +358,7 @@ elif tabs == "통합":
         st.plotly_chart(total_filtered2_count_fig, use_container_width=True)
         
     with tabs4_col1_2 : 
-        st.dataframe(total_filtered2.sort_values(by = '접수번호'))
+        st.dataframe(total_filtered2)
 
     with tabs4_col2_1 :
 
