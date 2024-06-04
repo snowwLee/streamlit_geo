@@ -15,6 +15,7 @@ from collections import Counter
 from streamlit_folium import folium_static
 import matplotlib.colors as mcolors
 import branca.colormap as cm
+
 #--------------------------------------------------------------------------------
 
 # streamlit화면을 전체로 사용
@@ -37,112 +38,142 @@ with st.sidebar:
 #---------------------------------------------------------------------------------
 
 if tabs == "지도":
-
-    tabs_map_1, tabs_map_2, tabs_map_3 = st.columns([1,8,1])
-#--------------지도 페이지 지도 시작점 -----------------------------------------------------------------------
-
-
-    with tabs_map_2 :
-        # '동원지역명 수정' 갯수를 계산하여 딕셔너리에 저장
-        location_counts = df['동원지역명 수정'].value_counts().to_dict()
-
-        # 색상의 범위를 '동원지역명 수정'의 갯수에 따라 설정
-        min_count = min(location_counts.values())
-        max_count = max(location_counts.values())
-        colormap = cm.linear.viridis.scale(min_count, max_count)
-
-        # 지도 객체 생성
-        m = folium.Map(location=[34.61292748985476, 22.350872041599875], zoom_start=2, tiles='cartodbpositron')
-
-        # MarkerCluster 객체 생성
-        marker_cluster = MarkerCluster().add_to(m)
-
-        # 데이터프레임을 순회하며 각 '동원지역명 수정' 원을 생성
-        for name, group in df.groupby('동원지역명 수정'):
-            latitude = group['위도'].iloc[0] 
-            longitude = group['경도'].iloc[0]
-            num_locations = len(group)  # 그룹의 행 수 가져오기
-            num_confirmed = sum(group['봉환여부'] == '봉환')  # 각 group의 봉환 갯수 가져오기
-            color = colormap(location_counts[name])  # 지역명의 갯수에 따라 색상을 결정합니다.
-            
-            #위도 경도가 없을 경우에는 넘어가기
-            if pd.isnull(latitude) or pd.isnull(longitude):
-                continue
-            
-            # Tooltip 텍스트 생성
-            # ex) 한국 : 10 / 봉환자 6
-            tooltip_text = f"{name} <br> 총 : {num_locations} <br> 봉환자 : {num_confirmed} ",
-
-            # HTML 및 CSS를 사용하여 숫자와 색상을 모두 포함하는 DivIcon 생성
-            icon_html = f'''
-                <div style="
-                    display: flex;
-                    justify-content: center;
-                    align-items: center;
-                    width: 25px;
-                    height: 25px;
-                    border-radius: 50%;
-                    background-color: {color};
-                    font-size: 10pt;
-                    color: white;">
-                    {int(num_locations)}
-                </div>
-            '''
-
-            # Marker 생성하여 Cluster에 추가
-            folium.Marker(
-                location=[latitude, longitude],
-                icon=folium.DivIcon(html=icon_html),
-                tooltip=tooltip_text
-            ).add_to(marker_cluster)
-
-        # 컬러맵을 지도에 추가
-        colormap.add_to(m)
+#--------------전체 분포 지도 페이지 지도 시작점 -------------------------------------------------------------------
+    st.subheader('전체 분포 확인 지도')
+    info1, info2, info3 = st.columns(3)
+    with info1 :
+        st.info('1순위 지역')
+    with info2:
+        st.error('2순위 지역')
+    with info3:    
+        st.success('3순위 지역')
+    # Folium을 사용하여 지도 생성
+    m1 = folium.Map(location=[34.61292748985476, 22.350872041599875], zoom_start=2,tiles='cartodbpositron')
 
 
-        # streamlit-folium을 사용하여 지도 표시
-        st_folium(m, height=800, width = 2000)
+    # 같은 위치의 좌표들을 하나로 묶어서 사용하기 위해 사용
+    marker_cluster = MarkerCluster().add_to(m1)
+
+    # 좌표 빈도 계산
+    coordinates = [(row['위도'], row['경도']) for index, row in df.iterrows() if pd.notnull(row['위도']) and pd.notnull(row['경도'])]
+    coordinate_counts = Counter(coordinates)
+
+    # 가장 많은 좌표 상위 3개 찾기
+    most_common_coordinates = coordinate_counts.most_common(3)
+
+
+    # 클러스터 그리기
+    for index, row in df.iterrows():
+        local_name = row['동원지역명 수정']
+        lat = row['위도']
+        lng = row['경도']
+        if isinstance(lat, str) or isinstance(lng, str):
+            continue
+        if pd.notnull(lat) and pd.notnull(lng):
+            folium.Marker([lat, lng], tooltip=local_name).add_to(marker_cluster)
+
+    # 상위 3개 좌표에 동그라미 그리기
+    colors = ['#0100FF', '#FF007F', '#41FF3A']
+    for i, (coordinate, count) in enumerate(most_common_coordinates):
+        folium.Circle(
+            location=coordinate,
+            radius=250000,
+            color=colors[i],
+            fill=True,
+            fill_color=colors[i]
+        ).add_to(m1)
+
+    # 지도 출력하기
+    st_f = st_folium(m1, width=2000)
+
+#--------------봉환자 지도 페이지 지도 시작점 -----------------------------------------------------------------------
+    st.markdown('---')
+    st.subheader('봉환자 확인 지도')
+
+    # '동원지역명 수정' 갯수를 계산하여 딕셔너리에 저장
+    location_counts = df['동원지역명 수정'].value_counts().to_dict()
+
+    # 색상의 범위를 '동원지역명 수정'의 갯수에 따라 설정
+    min_count = min(location_counts.values())
+    max_count = max(location_counts.values())
+    colormap = cm.linear.viridis.scale(min_count, max_count)
+
+    # 지도 객체 생성
+    m2 = folium.Map(location=[34.61292748985476, 22.350872041599875], zoom_start=2, tiles='cartodbpositron')
+
+    # MarkerCluster 객체 생성
+    # marker_cluster = MarkerCluster().add_to(m)
+
+    # 데이터프레임을 순회하며 각 '동원지역명 수정' 원을 생성
+    for name, group in df.groupby('동원지역명 수정'):
+        latitude = group['위도'].iloc[0] 
+        longitude = group['경도'].iloc[0]
+        num_locations = len(group)  # 그룹의 행 수 가져오기
+        num_confirmed = sum(group['봉환여부'] == '봉환')  # 각 group의 봉환 갯수 가져오기
+        color = colormap(location_counts[name])  # 지역명의 갯수에 따라 색상을 결정합니다.
+        
+        #위도 경도가 없을 경우에는 넘어가기
+        if pd.isnull(latitude) or pd.isnull(longitude):
+            continue
+        
+        # Tooltip 텍스트 생성
+        # ex) 한국 : 10 / 봉환자 6
+        tooltip_text = f"{name} <br> 총 : {num_locations} <br> 봉환자 : {num_confirmed} ",
+
+        # HTML 및 CSS를 사용하여 숫자와 색상을 모두 포함하는 DivIcon 생성
+        icon_html = f'''
+            <div style="
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                width: 25px;
+                height: 25px;
+                border-radius: 50%;
+                background-color: {color};
+                font-size: 10pt;
+                color: white;">
+                {int(num_locations)}
+            </div>
+        '''
+
+        # Marker 생성하여 Cluster에 추가
+        folium.Marker(
+            location=[latitude, longitude],
+            icon=folium.DivIcon(html=icon_html),
+            tooltip=tooltip_text
+        ).add_to(m2)
+
+    # 컬러맵을 지도에 추가
+    colormap.add_to(m2)
+
+
+    # folium_static 함수를 사용하여 지도를 표시
+    st_folium(m2, width=2000)
+
+
+
 
 #--------------지도 페이지 지도 끝점 -----------------------------------------------------------------------
 
 
     st.markdown('---')
-    st.subheader('동원국가 비율')
-    tabs1_col1_1, tabs1_col1_2 = st.columns([4,2])
-    st.markdown('---')
-    st.subheader('분류 비율')
-    tabs1_col2_1, tabs1_col2_2 = st.columns([4,2])
+    st.subheader('분류')
+    tabs1_col2_1, tabs1_col2_2 = st.columns([7,3])
 
     
-    with tabs1_col1_1 :
-        
-        # 동원국가 수정의 갯수 -> 파이차트 그리기 위한 데이터 프레임
-        country_count_pi = df['동원국가 - 수정'].value_counts()
-        country_count_pi = pd.DataFrame({'동원국가 - 수정':country_count_pi.index, '동원국가 - 수정_count':country_count_pi.values})
-        # 동원국가 수정의 plotly pie차트
-        country_fig_pie = px.pie(country_count_pi, values='동원국가 - 수정_count', names='동원국가 - 수정', title=' ')     
-
-        #동원국가 비율 파이차트 출력 
-        st.plotly_chart(country_fig_pie)
-    
-
-    with tabs1_col1_2 : 
-        #동원국가 데이터프레임 출력
-        st.write(country_count_pi[['동원국가 - 수정','동원국가 - 수정_count']]) 
-
     with tabs1_col2_1 : 
 
         # 분류의 갯수 -> 파이차트 그리기 위한 데이터 프레임
-        class_count_pi = df['분류'].value_counts()
-        class_count_pi = pd.DataFrame({'분류':class_count_pi.index, '분류_count':class_count_pi.values})
+        class_count_bar = df['분류'].value_counts()
+        class_count_bar = pd.DataFrame({'분류':class_count_bar.index, '분류_count':class_count_bar.values})
         # 분류 plotly pie차트
-        class_fig_pie = px.pie(class_count_pi, values='분류_count', names='분류', title=' ')   
-
-        #분류 비율 파이차트 출력   
-        st.plotly_chart(class_fig_pie)
+        class_count_bar_fig = px.bar(class_count_bar, x='분류', y='분류_count')   
+        class_count_bar_fig.update_traces(marker_color='#ffb6c1')
+        #분류 비율 그래프 출력
+        st.plotly_chart(class_count_bar_fig, use_container_width=True)
     with tabs1_col2_2 :
         # 분류 비율 데이터 프레임 출력
-        st.write(class_count_pi[['분류','분류_count']])
+        st.write(class_count_bar[['분류','분류_count']])
 
 
 #--------------------------------------------------------------------------------
