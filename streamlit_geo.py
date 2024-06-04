@@ -84,7 +84,8 @@ if tabs == "지도":
         ).add_to(m1)
 
     # 지도 출력하기
-    st_f = st_folium(m1, width=2000)
+    st_folium(m1, width=2000)
+
 
 #--------------봉환자 지도 페이지 지도 시작점 -----------------------------------------------------------------------
     st.markdown('---')
@@ -104,7 +105,7 @@ if tabs == "지도":
     # MarkerCluster 객체 생성
     # marker_cluster = MarkerCluster().add_to(m)
 
-    # 데이터프레임을 순회하며 각 '동원지역명 수정' 원을 생성
+    # 데이터프레임을 순회하며 각 'q 수정' 원을 생성
     for name, group in df.groupby('동원지역명 수정'):
         latitude = group['위도'].iloc[0] 
         longitude = group['경도'].iloc[0]
@@ -146,9 +147,10 @@ if tabs == "지도":
     # 컬러맵을 지도에 추가
     colormap.add_to(m2)
 
+    m2.save('map_with_colormap.html')
 
-    # folium_static 함수를 사용하여 지도를 표시
-    st_folium(m2, width=2000)
+    with open('map_with_colormap.html', 'r', encoding='utf-8') as file:
+        st.components.v1.html(file.read(), height=700)
 
 
 
