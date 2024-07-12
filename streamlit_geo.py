@@ -15,7 +15,7 @@ from collections import Counter
 from streamlit_folium import folium_static
 import matplotlib.colors as mcolors
 import branca.colormap as cm
-
+import matplotlib.pyplot as plt
 #--------------------------------------------------------------------------------
 
 # streamlit화면을 전체로 사용
@@ -27,18 +27,19 @@ st.markdown('<hr style="bosrder-top: 3px solid #89a5ea; border-radius: 3px;">', 
 
 # 데이터 불러오기
 # 엑셀파일 변경시
-df = pd.read_excel('중간보고.xlsx', sheet_name='Sheet1')
+df = pd.read_excel('0. streamlit_데이터(07.12).xlsx', sheet_name='Sheet1')
 
 
 #--------------------------------------------------------------------------------
 
 # 탭 생성
 with st.sidebar:
-    tabs = option_menu("MENU", ["지도", "동원 지역", "동원 국가", "접수번호 조회","통합"],menu_icon="app-indicator")
+    tabs = option_menu("MENU", ["지도", "유해봉환 확인", "동원 지역", "접수번호 조회","통합"],menu_icon="app-indicator")
 #---------------------------------------------------------------------------------
 
-if tabs == "지도":
+
 #--------------전체 분포 지도 페이지 지도 시작점 -------------------------------------------------------------------
+if tabs == "지도":
     st.subheader('전체 분포 확인 지도')
     info1, info2, info3 = st.columns(3)
     with info1 :
@@ -85,10 +86,10 @@ if tabs == "지도":
 
     # 지도 출력하기
     st_folium(m1, width=2000)
+#--------------지도 페이지 지도 끝점 -----------------------------------------------------------------------
 
-
-#--------------봉환자 지도 페이지 지도 시작점 -----------------------------------------------------------------------
-    st.markdown('---')
+#--------------유해봉환여부 시작점 -----------------------------------------------------------------------
+if tabs == "유해봉환 확인":
     st.subheader('봉환자 확인 지도')
 
     # '동원지역명 수정' 갯수를 계산하여 딕셔너리에 저장
@@ -110,7 +111,7 @@ if tabs == "지도":
         latitude = group['위도'].iloc[0] 
         longitude = group['경도'].iloc[0]
         num_locations = len(group)  # 그룹의 행 수 가져오기
-        num_confirmed = sum(group['봉환여부'] == '봉환')  # 각 group의 봉환 갯수 가져오기
+        num_confirmed = sum(group['유골봉환여부'] == '봉환')  # 각 group의 봉환 갯수 가져오기
         color = colormap(location_counts[name])  # 지역명의 갯수에 따라 색상을 결정합니다.
         
         #위도 경도가 없을 경우에는 넘어가기
@@ -152,33 +153,54 @@ if tabs == "지도":
     with open('map_with_colormap.html', 'r', encoding='utf-8') as file:
         st.components.v1.html(file.read(), height=700)
 
-
-
-
-#--------------지도 페이지 지도 끝점 -----------------------------------------------------------------------
-
-
+    #---------- 유해봉환여부 파이차트그리기 ---------------
+    # 유해봉환여부 파이차트 columns 나누기
+    st.write(' ')
     st.markdown('---')
-    st.subheader('분류')
-    tabs1_col2_1, tabs1_col2_2 = st.columns([7,3])
+    st.write(' ')
+    st.subheader('봉환여부 파이차트')
+    pie_col1_1, pie_col1_2= st.columns([4,1])
+
+    with pie_col1_1 : 
+
+        # 각 지역의 갯수 세기
+        region_counts = df['유골봉환여부'].value_counts().sort_values(ascending=False)
+
+        # 파이차트 그리기
+        # 파이차트 컬러 지정
+        colors = ['#ff9999','#66b3ff','#99ff99','#ffcc99']
+        pie_count = df['유골봉환여부'].value_counts()
+        pie_count_df = pd.DataFrame({'유골봉환여부':pie_count.index, 'count':pie_count.values})
+        pie_count_fig = px.pie(pie_count_df, values='count',
+                            names='유골봉환여부',
+                            title=' ',
+                            hole=0.3,
+                            color_discrete_sequence = colors)
+
+        # 범례 위치 설정
+        pie_count_fig.update_layout(legend=dict(
+            orientation="h",  # 범례의 방향 (수평)
+            xanchor="left",   # 범례의 x축 기준 위치 (왼쪽)
+            yanchor="top",    # 범례의 y축 기준 위치 (상단)
+            x=0,              # x축 위치 (0은 왼쪽 맨 끝)
+            y=1.3             # y축 위치 (1.1은 상단에서 약간 내린 곳)
+        ))
+
+        st.plotly_chart(pie_count_fig, use_container_width=True)
+    with pie_col1_2 :
+        # 유해봉환여부에 대한 데이터프레임 출력
+        st.write(' ')
+        st.write(pie_count_df)
+        
+#--------------유해 봉환 여부 끝점 ---------------------------------------------
+
+
+
+
+
 
     
-    with tabs1_col2_1 : 
-
-        # 분류의 갯수 -> 파이차트 그리기 위한 데이터 프레임
-        class_count_bar = df['분류'].value_counts()
-        class_count_bar = pd.DataFrame({'분류':class_count_bar.index, '분류_count':class_count_bar.values})
-        # 분류 plotly pie차트
-        class_count_bar_fig = px.bar(class_count_bar, x='분류', y='분류_count')   
-        class_count_bar_fig.update_traces(marker_color='#ffb6c1')
-        #분류 비율 그래프 출력
-        st.plotly_chart(class_count_bar_fig, use_container_width=True)
-    with tabs1_col2_2 :
-        # 분류 비율 데이터 프레임 출력
-        st.write(class_count_bar[['분류','분류_count']])
-
-
-#--------------------------------------------------------------------------------
+#--------------동원 지역 시작점 ------------------------------------------------
 
 elif tabs == "동원 지역":
     # 두 번째 탭 첫번째 컬럼 생성
@@ -189,16 +211,16 @@ elif tabs == "동원 지역":
     #지역의 갯수
     # 지역명의 수를 count 한 다음 데이터 프레임으로 만들기
     local_count = df['동원지역명 수정'].value_counts()
-    local_count = pd.DataFrame({'동원지역명 수정': local_count.index, '동원지역명 수정_count': local_count.values})
+    local_count = pd.DataFrame({'동원지역명': local_count.index, 'count': local_count.values})
 
     # 데이터프레임 열의 고유값들을 리스트로 가져오기
-    options = local_count['동원지역명 수정'].unique().tolist()
+    options = local_count['동원지역명'].unique().tolist()
 
     # multiselect로 선택한 값을 저장할 리스트
     selected_options = st.multiselect(' ' ,options)
 
     # 선택한 값에 해당하는 행만 필터링
-    filtered_df = local_count[local_count['동원지역명 수정'].isin(selected_options)]
+    filtered_df = local_count[local_count['동원지역명'].isin(selected_options)]
 
     # 두 번째 탭 두번째 컬럼 생성
     tabs2_col2_1, tabs2_col2_2= st.columns([4,1])
@@ -209,104 +231,39 @@ elif tabs == "동원 지역":
     tabs2_col3_1, tabs2_col3_2= st.columns([4,1])
 
     with tabs2_col1_1:
-        fig = px.bar(local_count, x='동원지역명 수정', y='동원지역명 수정_count', title='전체 동원 지역 그래프')
+        fig = px.bar(local_count, x='동원지역명', y='count', title='전체 동원 지역 그래프')
         fig.update_traces(marker_color='#ffb6c1')
         st.plotly_chart(fig, use_container_width=True)
 
     with tabs2_col1_2:
         # 전체 데이터 프레임 출력
-        st.write(local_count[['동원지역명 수정','동원지역명 수정_count']])
+        st.write(local_count[['동원지역명','count']])
 
     with tabs2_col2_1:
         # 선택한 데이터프레임을 막대그래프로 표시
-        f_fig = px.bar(filtered_df, x='동원지역명 수정', y='동원지역명 수정_count', title='선택 동원 지역 그래프')
+        f_fig = px.bar(filtered_df, x='동원지역명', y='count', title='선택 동원 지역 그래프')
         f_fig.update_traces(marker_color='#c71585')
         st.plotly_chart(f_fig, use_container_width=True)
     with tabs2_col2_2:
         # 선택한 데이터프레임 출력
-        st.write(filtered_df[['동원지역명 수정','동원지역명 수정_count']])
+        st.write(filtered_df[['동원지역명','count']])
 
     with tabs2_col3_1:
         #상위 선택 슬라이더
         top_count = st.slider(' ', min_value=0, max_value=len(local_count), value=10)
-        top_df = local_count.nlargest(top_count, '동원지역명 수정_count')
-        top_fig = px.bar(top_df, x='동원지역명 수정', y='동원지역명 수정_count', title=f'상위 {top_count}개 동원 지역 그래프')
+        top_df = local_count.nlargest(top_count, 'count')
+        top_fig = px.bar(top_df, x='동원지역명', y='count', title=f'상위 {top_count}개 동원 지역 그래프')
         top_fig.update_traces(marker_color='#8b008b')
         st.plotly_chart(top_fig, use_container_width=True)
         
         
     with tabs2_col3_2:
         #상위 데이터프레임 출력
-        st.write(top_df[['동원지역명 수정','동원지역명 수정_count']])
+        st.write(top_df[['동원지역명','count']])
 
-#--------------------------------------------------------------------------------
+#--------------동원 지역 끝점 ---------------------------------------------
 
-elif tabs == "동원 국가":
-
-    st.subheader('동원 국가 설명')
-    st.warning('남양군도')
-    st.write('...')
-    st.markdown('---')
-
-   # 세 번째 탭 첫번째 컬럼 생성
-    tabs3_col1_1, tabs3_col1_2= st.columns([4,1])
-
-    st.markdown('---')
-
-    #동원국가 - 수정의 갯수
-    # 동원국가 - 수정 수를 count 한 다음 데이터 프레임으로 만들기
-    nation_count = df['동원국가 - 수정'].value_counts()
-    nation_count = pd.DataFrame({'동원국가 - 수정': nation_count.index, '동원국가 - 수정_count': nation_count.values})
-
-    # 데이터프레임 열의 고유값들을 리스트로 가져오기
-    nation_options = nation_count['동원국가 - 수정'].unique().tolist()
-
-    # multiselect로 선택한 값을 저장할 리스트
-    nation_selected_options = st.multiselect(' ' ,nation_options)
-
-    # 선택한 값에 해당하는 행만 필터링
-    nation_filtered_df = nation_count[nation_count['동원국가 - 수정'].isin(nation_selected_options)]
-
-
-
-    # 세 번째 탭 두번째 컬럼 생성
-    tabs3_col2_1, tabs3_col2_2= st.columns([4,1])
-
-    st.markdown('---')
-
-    # 세 번째 탭 세번째 컬럼 생성
-    tabs3_col3_1, tabs3_col3_2= st.columns([4,1])
-     
-    with tabs3_col1_1:
-        nation_fig = px.pie(nation_count, values='동원국가 - 수정_count', names='동원국가 - 수정', title='동원국가 비율 차트')      
-        st.plotly_chart(nation_fig, use_container_width=True)
-
-    with tabs3_col1_2:
-        # 전체 데이터 프레임 출력
-        st.write(nation_count[['동원국가 - 수정','동원국가 - 수정_count']])
-
-    with tabs3_col2_1:
-        # 선택한 데이터프레임을 막대그래프로 표시
-        nation_f_fig = px.bar(nation_filtered_df, x='동원국가 - 수정', y='동원국가 - 수정_count', title='선택 동원 국가 그래프')
-        nation_f_fig.update_traces(marker_color='#7fffd4')
-        st.plotly_chart(nation_f_fig, use_container_width=True)
-    with tabs3_col2_2:
-        # 선택한 데이터프레임 출력
-        st.write(nation_filtered_df[['동원국가 - 수정','동원국가 - 수정_count']])
-
-    with tabs3_col3_1:
-        #상위 선택 슬라이더
-        nation_top_count = st.slider(' ', min_value=0, max_value=len(nation_count), value=10)
-        nation_top_df = nation_count.nlargest(nation_top_count, '동원국가 - 수정_count')
-        nation_top_fig = px.bar(nation_top_df, x='동원국가 - 수정', y='동원국가 - 수정_count', title=f'상위 {nation_top_count}개 동원 국가 그래프')
-        nation_top_fig.update_traces(marker_color='#40e0d0')
-        st.plotly_chart(nation_top_fig, use_container_width=True)
-        
-    with tabs3_col3_2:
-        #상위 데이터프레임 출력
-        st.write(nation_top_df[['동원국가 - 수정','동원국가 - 수정_count']])    
-
-#--------------------------------------------------------------------------------
+#--------------접수번호 조회 시작점 ------------------------------------------------
 
 elif tabs == "접수번호 조회":
 
@@ -331,8 +288,8 @@ elif tabs == "접수번호 조회":
             st.write('입력한 접수번호를 찾을 수 없습니다.')
     
 
-#--------------------------------------------------------------------------------
-
+#--------------접수번호 조회 끝점 ------------------------------------------------
+#--------------통합분석 시작점 ------------------------------------------------
 elif tabs == "통합":
     st.header('통합분석')
     st.write(' ')
@@ -360,7 +317,7 @@ elif tabs == "통합":
     
     #비율 데이터 프레임 만들기--------------------------------------------------------------------------------
     total_filtered2_count = total_filtered2['동원지역명 수정'].value_counts()
-    total_filtered2_count = pd.DataFrame({'선택 동원지역': total_filtered2_count.index, '선택 동원지역_count': total_filtered2_count.values})
+    total_filtered2_count = pd.DataFrame({'선택 동원지역': total_filtered2_count.index, 'count': total_filtered2_count.values})
 
 
     #필터링 좌표를 찍을 map선언
@@ -386,7 +343,7 @@ elif tabs == "통합":
 
     with tabs4_col1_1:
         # 선택한 데이터프레임을 막대그래프로 표시
-        total_filtered2_count_fig = px.bar(total_filtered2_count, x='선택 동원지역', y='선택 동원지역_count', title='선택 동원 지역 그래프')
+        total_filtered2_count_fig = px.bar(total_filtered2_count, x='선택 동원지역', y='count', title='선택 동원 지역 그래프')
         total_filtered2_count_fig.update_traces(marker_color='#7fffd4')
         st.plotly_chart(total_filtered2_count_fig, use_container_width=True)
         
@@ -424,3 +381,4 @@ elif tabs == "통합":
         data=file_data,
         file_name='map.html',
         mime='text/html')   
+#--------------통합분석 끝점 ------------------------------------------------
