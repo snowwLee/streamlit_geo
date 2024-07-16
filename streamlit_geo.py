@@ -27,19 +27,19 @@ st.markdown('<hr style="bosrder-top: 3px solid #89a5ea; border-radius: 3px;">', 
 
 # 데이터 불러오기
 # 엑셀파일 변경시
-df = pd.read_excel('0. streamlit_데이터(07.12).xlsx', sheet_name='Sheet1')
+df = pd.read_excel('0. streamlit_데이터(07.15).xlsx', sheet_name='Sheet1')
 
 
 #--------------------------------------------------------------------------------
 
 # 탭 생성
 with st.sidebar:
-    tabs = option_menu("MENU", ["지도", "유해봉환 확인", "동원 지역", "접수번호 조회","통합"],menu_icon="app-indicator")
+    tabs = option_menu("MENU", ["전체분포 확인", "유해봉환 확인", "동원 지역", "접수번호 조회","통합"],menu_icon="app-indicator")
 #---------------------------------------------------------------------------------
 
 
 #--------------전체 분포 지도 페이지 지도 시작점 -------------------------------------------------------------------
-if tabs == "지도":
+if tabs == "전체분포 확인":
     st.subheader('전체 분포 확인 지도')
     info1, info2, info3 = st.columns(3)
     with info1 :
@@ -86,6 +86,51 @@ if tabs == "지도":
 
     # 지도 출력하기
     st_folium(m1, width=2000)
+
+    st.write(' ')
+    st.markdown('---')
+    st.write(' ')
+    st.subheader('작업장 육/해 구분 파이차트')
+
+    # 육해구분을 위한 데이터 프레임 만들기
+    dist_count = df[['육해구분','육해구분완료']]
+    dist_counts = df['육해구분완료'].value_counts().sort_values(ascending=False)
+    dist_count_df = pd.DataFrame({'육/해구분':dist_counts.index, 'count':dist_counts.values})
+
+    # 상단 텍스트 출력
+    st.markdown(f"**{dist_counts.index[0]}     {dist_counts.values[0]}건 / " \
+                f"{dist_counts.index[2]}     {dist_counts.values[2]}건 / " \
+                f"{dist_counts.index[1]}     {dist_counts.values[1]}건**")
+    dist_col1_1, dist_col1_2= st.columns([3,2])
+
+    with dist_col1_1 : 
+
+
+        # 파이차트 그리기
+        # 파이차트 컬러 지정
+        colors = ['#ff9999','#66b3ff','#99ff99','#ffcc99']
+
+        dist_count_fig = px.pie(dist_count_df, values='count',
+                            names='육/해구분',
+                            title=' ',
+                            hole=0.3,
+                            color_discrete_sequence = colors)
+
+        # 범례 위치 설정
+        dist_count_fig.update_layout(legend=dict(
+            orientation="h",  # 범례의 방향 (수평)
+            xanchor="left",   # 범례의 x축 기준 위치 (왼쪽)
+            yanchor="top",    # 범례의 y축 기준 위치 (상단)
+            x=0,              # x축 위치 (0은 왼쪽 맨 끝)
+            y=1.3             # y축 위치 (1.1은 상단에서 약간 내린 곳)
+        ))
+
+        st.plotly_chart(dist_count_fig, use_container_width=True)
+    with dist_col1_2 :
+        # 육해구분 대한 데이터프레임 출력
+        st.write(' ')
+        st.write(dist_count)
+        
 #--------------지도 페이지 지도 끝점 -----------------------------------------------------------------------
 
 #--------------유해봉환여부 시작점 -----------------------------------------------------------------------
