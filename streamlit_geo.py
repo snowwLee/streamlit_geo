@@ -27,7 +27,7 @@ st.markdown('<hr style="bosrder-top: 3px solid #89a5ea; border-radius: 3px;">', 
 
 # 데이터 불러오기
 # 엑셀파일 변경시
-df = pd.read_excel('0. streamlit_데이터(07.19).xlsx', sheet_name='Sheet1')
+df = pd.read_excel('0. streamlit_데이터(07.30).xlsx', sheet_name='Sheet1')
 
 
 #--------------------------------------------------------------------------------
