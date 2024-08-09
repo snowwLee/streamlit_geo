@@ -27,7 +27,8 @@ st.markdown('<hr style="bosrder-top: 3px solid #89a5ea; border-radius: 3px;">', 
 
 # 데이터 불러오기
 # 엑셀파일 변경시
-df = pd.read_excel('0. streamlit_데이터(07.30).xlsx', sheet_name='Sheet1')
+df = pd.read_excel('0. streamlit_데이터(08.09).xlsx', sheet_name='Sheet1')
+
 
 
 #--------------------------------------------------------------------------------
@@ -78,7 +79,7 @@ if tabs == "전체분포 확인":
     for i, (coordinate, count) in enumerate(most_common_coordinates):
         folium.Circle(
             location=coordinate,
-            radius=250000,
+            radius=25000,
             color=colors[i],
             fill=True,
             fill_color=colors[i]
@@ -135,37 +136,51 @@ if tabs == "전체분포 확인":
 
 #--------------유해봉환여부 시작점 -----------------------------------------------------------------------
 if tabs == "유해봉환 확인":
-    st.subheader('봉환자 확인 지도')
+    st.subheader('확인 지도')
 
-    # '동원지역명 수정' 갯수를 계산하여 딕셔너리에 저장
+    # '지역명 수정' 갯수를 계산하여 딕셔너리에 저장
     location_counts = df['동원지역명 수정'].value_counts().to_dict()
 
-    # 색상의 범위를 '동원지역명 수정'의 갯수에 따라 설정
-    min_count = min(location_counts.values())
-    max_count = max(location_counts.values())
-    colormap = cm.linear.viridis.scale(min_count, max_count)
+    # 색상 구간 정의
+    def get_color(count):
+        if count <= 10:
+            return '#A5DF00'
+        elif count <= 100:
+            return '#74DF00'
+        elif count <= 200:
+            return '#01A9DB'
+        elif count <= 300:
+            return '#0174DF'
+        elif count <= 400:
+            return '#0101DF'
+        elif count <= 500:
+            return '#DF01D7'
+        elif count <= 600:
+            return '#B40431'
+        elif count <= 700:
+            return '#B40404'
+        elif count <= 800:
+            return '#151515'
+        else:
+            return '#000000'
 
     # 지도 객체 생성
     m2 = folium.Map(location=[34.61292748985476, 22.350872041599875], zoom_start=2, tiles='cartodbpositron')
 
-    # MarkerCluster 객체 생성
-    # marker_cluster = MarkerCluster().add_to(m)
-
-    # 데이터프레임을 순회하며 각 'q 수정' 원을 생성
+    # 데이터프레임을 순회하며 각 '수정' 원을 생성
     for name, group in df.groupby('동원지역명 수정'):
         latitude = group['위도'].iloc[0] 
         longitude = group['경도'].iloc[0]
         num_locations = len(group)  # 그룹의 행 수 가져오기
-        num_confirmed = sum(group['유골봉환여부'] == '봉환')  # 각 group의 봉환 갯수 가져오기
-        color = colormap(location_counts[name])  # 지역명의 갯수에 따라 색상을 결정합니다.
+        num_confirmed = sum(group['유골봉환여부'] == '봉환')  # 각 group의 갯수 가져오기
+        color = get_color(location_counts[name])  # 지정한 색상 구간에 따라 색상 결정
         
-        #위도 경도가 없을 경우에는 넘어가기
+        # 위도 경도가 없을 경우에는 넘어가기
         if pd.isnull(latitude) or pd.isnull(longitude):
             continue
         
         # Tooltip 텍스트 생성
-        # ex) 한국 : 10 / 봉환자 6
-        tooltip_text = f"{name} <br> 총 : {num_locations} <br> 봉환자 : {num_confirmed} ",
+        tooltip_text = f"{name} <br> 총 : {num_locations} <br> 갯수 : {num_confirmed} ",
 
         # HTML 및 CSS를 사용하여 숫자와 색상을 모두 포함하는 DivIcon 생성
         icon_html = f'''
@@ -183,21 +198,18 @@ if tabs == "유해봉환 확인":
             </div>
         '''
 
-        # Marker 생성하여 Cluster에 추가
+        # Marker 생성하여 지도에 추가
         folium.Marker(
             location=[latitude, longitude],
             icon=folium.DivIcon(html=icon_html),
             tooltip=tooltip_text
         ).add_to(m2)
 
-    # 컬러맵을 지도에 추가
-    colormap.add_to(m2)
-
+    # 지도 저장 및 렌더링
     m2.save('map_with_colormap.html')
 
     with open('map_with_colormap.html', 'r', encoding='utf-8') as file:
         st.components.v1.html(file.read(), height=700)
-
     #---------- 유해봉환여부 파이차트그리기 ---------------
     # 유해봉환여부 파이차트 columns 나누기
     st.write(' ')
