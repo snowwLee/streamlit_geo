@@ -154,13 +154,13 @@ if tabs == "유해봉환 확인":
         elif count <= 400:
             return '#0101DF'
         elif count <= 500:
-            return '#DF01D7'
+            return '#A225BB'
         elif count <= 600:
-            return '#B40431'
+            return '#7E15A3'
         elif count <= 700:
-            return '#B40404'
+            return '#622197'
         elif count <= 800:
-            return '#151515'
+            return '#B40431'
         else:
             return '#000000'
 
