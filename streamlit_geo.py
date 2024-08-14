@@ -27,7 +27,7 @@ st.markdown('<hr style="bosrder-top: 3px solid #89a5ea; border-radius: 3px;">', 
 
 # 데이터 불러오기
 # 엑셀파일 변경시
-df = pd.read_excel('0. streamlit_데이터(08.09).xlsx', sheet_name='Sheet1')
+df = pd.read_excel('0. streamlit_데이터(08.14).xlsx', sheet_name='Sheet1')
 
 
 
@@ -172,7 +172,10 @@ if tabs == "유해봉환 확인":
         latitude = group['위도'].iloc[0] 
         longitude = group['경도'].iloc[0]
         num_locations = len(group)  # 그룹의 행 수 가져오기
-        num_confirmed = sum(group['유골봉환여부'] == '봉환')  # 각 group의 갯수 가져오기
+        num_count_1 = sum(group['유골봉환여부'] == '봉환')  # 각 group의 봉환 갯수 가져오기
+        num_count_2 = sum(group['유골봉환여부'] == '불상')  # 각 group의 봉환 갯수 가져오기
+        num_count_3 = sum(group['유골봉환여부'] == '미봉환 및 행불')  # 각 group의 봉환 갯수 가져오기
+        num_count_4 = sum(group['유골봉환여부'] == '기타')  # 각 group의 봉환 갯수 가져오기
         color = get_color(location_counts[name])  # 지정한 색상 구간에 따라 색상 결정
         
         # 위도 경도가 없을 경우에는 넘어가기
@@ -180,7 +183,7 @@ if tabs == "유해봉환 확인":
             continue
         
         # Tooltip 텍스트 생성
-        tooltip_text = f"{name} <br> 총 : {num_locations} <br> 갯수 : {num_confirmed} ",
+        tooltip_text = f"{name} <br> 총 합 : {num_locations} <br>봉환 : {num_count_1} <br>불상 : {num_count_2} <br>미봉환 및 행불 : {num_count_3} <br>기타 : {num_count_4} <br>",
 
         # HTML 및 CSS를 사용하여 숫자와 색상을 모두 포함하는 DivIcon 생성
         icon_html = f'''
